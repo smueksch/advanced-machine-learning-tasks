@@ -17,20 +17,19 @@ def main():
     experiment = Experiment(
         project_name='aml-tasks',
         workspace='smueksch',
-        # Prevent CometML from dumping all sorts of parameter info about SVC,
-        # embedding, etc. into the experiment log. Avoids cluttering but could
-        # be preferrable to set to True.
+        # Prevent Comet.ml from dumping all sorts of parameter info into the
+        # experiment log.
         auto_param_logging=False,
         # Set to True if you want to disable Comet.ml interaction.
         disabled=False,
-    )
+        )
     experiment.set_name('Linear Regression')
 
     # Define experiment parameters for CometML to be logged to the project under
     # the experiment.
     params = {
         'model': 'linear regression',
-    }
+        }
     log_parameters(experiment, params)
 
     linear_regression = LinearRegression()
@@ -52,7 +51,7 @@ def main():
         # Conversion necessary as rmse is in NumPy specific type that isn't
         # nicely serialized.
         "rmse": float(rmse),
-    }
+        }
     log_metrics(experiment, metrics)
 
 
