@@ -1,5 +1,11 @@
 from comet_ml import Experiment
 import argparse
+import re
+import yaml
+import pandas as pd
+
+from typing import Any
+from collections.abc import Sequence
 
 
 def build_experiment_from_cli(cli_arguments: argparse.Namespace) -> Experiment:
@@ -23,3 +29,81 @@ def build_experiment_from_cli(cli_arguments: argparse.Namespace) -> Experiment:
     experiment.set_name(cli_arguments.name)
 
     return experiment
+
+
+def __format_experiment_name(name: str) -> str:
+    '''
+    Return formatted experiment name.
+
+    Formatting is applied as follows:
+
+        1. All characters are made lowercase.
+        2. Whitespaces are replaced with hyphens.
+
+    Args:
+        name (str): Name to be formatted.
+
+    Returns:
+        str: Given name with formatting applied.
+    '''
+    return re.sub(r'\s+', '-', name.lower())
+
+
+def log_parameters(experiment: Experiment, parameters: dict) -> None:
+    '''
+    Log parameter settings to CometML and a local YAML file.
+
+    Args:
+        experiment (Experiment): Comet.ml experiment to log to.
+        params (dict): Parameter mappings to log.
+    '''
+    experiment.log_parameters(parameters)
+
+    # Log parameters to local file system
+    experiment_name = __format_experiment_name(experiment.get_name())
+    with open(f'{experiment_name}-parameters.yml', 'w+') as outfile:
+        yaml.dump(parameters, outfile)
+
+
+def log_predictions(
+        experiment: Experiment, predictions: Sequence[Any],
+        index: Sequence[Any]) -> None:
+    '''
+    Log prediction files to CometML and a local CSV file.
+
+    Args:
+        experiment (Experiment): Comet.ml experiment to log to.
+        predictions (Sequence): List-like holding predictions.
+        index (Sequence): List-like holding index for predictions.
+        filename (str): CSV file to save predictions to.
+    '''
+    preds_df = pd.DataFrame(predictions, index=index, columns=['y'])
+
+    # Adjust ID column name to fit the format expected in the output.
+    preds_df.index.name = 'Id'
+
+    experiment_name = __format_experiment_name(experiment.get_name())
+    filename = f'{experiment_name}-predictions.csv'
+
+    # Log predictions as a CSV to CometML, retrievable under the experiment
+    # by going to `Assets > dataframes`.
+    experiment.log_table(filename=filename, tabular_data=preds_df)
+
+    # Log predictions to local file system
+    preds_df.to_csv(filename)
+
+
+def log_metrics(experiment: Experiment, metrics: dict) -> None:
+    '''
+    Log metrics to CometML and a local YAML file.
+
+    Args:
+        experiment (Experiment): Comet.ml experiment to log to.
+        metrics (dict): Metrics mappings to log.
+    '''
+    experiment.log_metrics(metrics)
+
+    # Log metrics to local file system
+    experiment_name = __format_experiment_name(experiment.get_name())
+    with open(f'{experiment_name}-metrics.yml', 'w+') as outfile:
+        yaml.dump(metrics, outfile)
