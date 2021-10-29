@@ -20,6 +20,8 @@ def get_cli_arguments() -> argparse.Namespace:
         'Example name'
         >>> args.seed
         42
+        >>> args.valid_split
+        0.2
         >>> args.disable_comet
         False
     '''
@@ -29,6 +31,8 @@ def get_cli_arguments() -> argparse.Namespace:
     parser.add_argument('--name', help='name for experiment')
     parser.add_argument('--seed', type=int, default=42,
                         help='random seed for experiment')
+    parser.add_argument('--valid-split', type=float, default=0.2,
+                        help='ratio of training data to use for validation')
     parser.add_argument(
         '--disable-comet',
         action='store_true',

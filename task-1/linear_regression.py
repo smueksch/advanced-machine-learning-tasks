@@ -4,6 +4,7 @@
 from comet_ml import Experiment
 import os
 from sklearn.linear_model import LinearRegression
+from sklearn.model_selection import train_test_split
 from sklearn.metrics import r2_score
 
 # Need to add amlutils path so Python can find it.
@@ -23,7 +24,8 @@ def main():
     # the experiment.
     params = {
         'model': 'linear regression',
-        }
+        'valid_split': cli_args.valid_split,
+        'random_seed': cli_args.seed}
     log_parameters(experiment, params)
 
     linear_regression = LinearRegression()
@@ -35,9 +37,19 @@ def main():
     X_train = X_train.fillna(0)
     X_test = X_test.fillna(0)
 
+    X_train, X_valid, y_train, y_valid = train_test_split(
+        X_train,
+        y_train,
+        test_size=cli_args.valid_split,
+        random_state=cli_args.seed)
+
     linear_regression.fit(X_train, y_train)
+
     train_predictions = linear_regression.predict(X_train)
-    score = r2_score(y_train, train_predictions)
+    train_score = r2_score(y_train, train_predictions)
+
+    valid_predictions = linear_regression.predict(X_valid)
+    valid_score = r2_score(y_valid, valid_predictions)
 
     predictions = linear_regression.predict(X_test)
     log_predictions(experiment, predictions, X_test.index)
@@ -47,8 +59,8 @@ def main():
     metrics = {
         # Conversion necessary as score is in NumPy specific type that isn't
         # nicely serialized.
-        "r2_score": float(score),
-        }
+        'train_r2_score': float(train_score),
+        'valid_r2_score': float(valid_score)}
     log_metrics(experiment, metrics)
 
 
