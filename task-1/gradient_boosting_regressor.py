@@ -19,6 +19,7 @@ from amlutils.experiment import log_parameters, log_predictions, log_metrics
 def main():
     cli_args = get_cli_arguments()
     experiment = build_experiment_from_cli(cli_args)
+    experiment.add_tag('task-1')
 
     # Define experiment parameters for CometML to be logged to the project under
     # the experiment.
