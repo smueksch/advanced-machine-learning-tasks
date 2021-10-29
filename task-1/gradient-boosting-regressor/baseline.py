@@ -30,7 +30,7 @@ def main():
 
     gbdt = GradientBoostingRegressor()
 
-    path_to_data = 'data'
+    path_to_data = os.path.join(os.pardir, 'data')
     X_train, y_train = load_train_set(path_to_data)
     X_test = load_test_set(path_to_data)
 
