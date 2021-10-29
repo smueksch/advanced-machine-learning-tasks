@@ -9,7 +9,7 @@ from sklearn.metrics import r2_score
 
 # Need to add amlutils path so Python can find it.
 import sys
-sys.path.append(os.path.join(os.pardir))
+sys.path.append(os.path.join(os.pardir, os.pardir))
 from amlutils.task1.loading import load_train_set, load_test_set
 from amlutils.cliargs import get_cli_arguments
 from amlutils.experiment import build_experiment_from_cli
