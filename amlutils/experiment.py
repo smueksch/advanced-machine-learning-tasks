@@ -23,7 +23,7 @@ def build_experiment_from_cli(cli_arguments: argparse.Namespace) -> Experiment:
     experiment = Experiment(
         project_name='aml-tasks',
         workspace='smueksch',
-        auto_param_logging=False,
+        auto_param_logging=True,
         disabled=cli_arguments.disable_comet,
         )
     experiment.set_name(cli_arguments.name)
