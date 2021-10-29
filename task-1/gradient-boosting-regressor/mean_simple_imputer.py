@@ -3,7 +3,10 @@
 # Must import before sklearn or else ImportError.
 from comet_ml import Experiment
 import os
+import numpy as np
+import pandas as pd
 from sklearn.ensemble import GradientBoostingRegressor
+from sklearn.impute import SimpleImputer
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import r2_score
 
@@ -14,6 +17,13 @@ from amlutils.task1.loading import load_train_set, load_test_set
 from amlutils.cliargs import get_cli_arguments
 from amlutils.experiment import build_experiment_from_cli
 from amlutils.experiment import log_parameters, log_predictions, log_metrics
+
+
+def impute_with_mean(df: pd.DataFrame) -> pd.DataFrame:
+    imp = SimpleImputer(missing_values=np.nan, strategy='mean')
+    return pd.DataFrame(
+        imp.fit_transform(df),
+        columns=df.columns, index=df.index)
 
 
 def main():
@@ -34,8 +44,8 @@ def main():
     X_train, y_train = load_train_set(path_to_data)
     X_test = load_test_set(path_to_data)
 
-    X_train = X_train.fillna(0)
-    X_test = X_test.fillna(0)
+    X_train = impute_with_mean(X_train)
+    X_test = impute_with_mean(X_test)
 
     X_train, X_valid, y_train, y_valid = train_test_split(
         X_train,
