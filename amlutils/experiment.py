@@ -4,8 +4,7 @@ import re
 import yaml
 import pandas as pd
 
-from typing import Any
-from collections.abc import Sequence
+from typing import Any, Sequence
 
 
 def build_experiment_from_cli(cli_arguments: argparse.Namespace) -> Experiment:
