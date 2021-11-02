@@ -1,5 +1,4 @@
-env2lmod
-module load gcc/6.3.0 python_cpu/3.8.5 eth_proxy
+module load gcc/6.3.0 python/3.8.5 eth_proxy
 bsub -W 8:00 \
 -n 8 \
 -R "rusage[mem=4096]" \
