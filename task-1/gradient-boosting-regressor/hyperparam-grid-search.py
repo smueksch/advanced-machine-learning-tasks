@@ -84,11 +84,6 @@ def main():
          1400, 1500, 1600, 1700, 1800, 1900, 2000],
         'gbr__max_depth': [1, 2, 3, 4]}
 
-    parameter_grid = {
-        'gbr__learning_rate': [0.5, 0.1],
-        'gbr__n_estimators': [100],
-        'gbr__max_depth': [1]}
-
     grid_search = GridSearchCV(
         model_pipeline,
         parameter_grid,
