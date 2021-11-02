@@ -1,6 +1,8 @@
 # Control experiment with one-hot encoding and no normalization.
 
-# Must import before sklearn or else ImportError.
+# Must import before sklearn or else ImportError. DO NOT remove following
+# import.
+from comet_ml import Experiment
 import os
 import numpy as np
 from sklearn.pipeline import Pipeline
