@@ -1,8 +1,10 @@
 import os
 import pandas as pd
 
+from typing import Tuple
 
-def load_train_set(path_to_data: str) -> tuple[pd.DataFrame, pd.DataFrame]:
+
+def load_train_set(path_to_data: str) -> Tuple[pd.DataFrame, pd.DataFrame]:
     '''
     Load training set from given data folder.
 

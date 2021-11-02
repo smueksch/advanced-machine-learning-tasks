@@ -9,6 +9,8 @@ from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import GridSearchCV
 
+from typing import List
+
 # Need to add amlutils path so Python can find it.
 import sys
 sys.path.append(os.path.join(os.pardir, os.pardir))
@@ -20,7 +22,7 @@ from amlutils.experiment import log_parameters, log_predictions, log_metrics, lo
 
 
 def get_high_correlation_features(
-        X: pd.DataFrame, y: pd.DataFrame, threshold: float) -> list[str]:
+        X: pd.DataFrame, y: pd.DataFrame, threshold: float) -> List[str]:
     '''
     Return X column labels with abs. correlation with y greater than threshold.
 
