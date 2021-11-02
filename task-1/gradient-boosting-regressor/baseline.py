@@ -1,10 +1,11 @@
 # Control experiment with one-hot encoding and no normalization.
 
 # Must import before sklearn or else ImportError.
-from comet_ml import Experiment
 import os
 import numpy as np
+from sklearn.pipeline import Pipeline
 from sklearn.ensemble import GradientBoostingRegressor
+from sklearn.impute import SimpleImputer
 from sklearn.model_selection import cross_validate
 
 # Need to add amlutils path so Python can find it.
@@ -36,14 +37,14 @@ def main():
     X_train, y_train = load_train_set(path_to_data)
     X_test = load_test_set(path_to_data)
 
-    X_train = X_train.fillna(0)
-    X_test = X_test.fillna(0)
-
-    gbr = GradientBoostingRegressor()
+    # Define model pipeline.
+    model_pipeline = Pipeline(
+        [('imputer', SimpleImputer(strategy='constant', fill_value=0)),
+         ('gbr', GradientBoostingRegressor())])
 
     # Cross-validate model.
     cv_scores = cross_validate(
-        gbr,
+        model_pipeline,
         X_train,
         y_train,
         scoring='r2',
@@ -53,9 +54,9 @@ def main():
         return_train_score=True)
 
     # Fit model on full training set and compute test predictions.
-    gbr.fit(X_train, y_train)
+    model_pipeline.fit(X_train, y_train)
 
-    predictions = gbr.predict(X_test)
+    predictions = model_pipeline.predict(X_test)
     log_predictions(experiment, predictions, X_test.index)
 
     # Define experiment metrics for CometML to be logged to the project under
