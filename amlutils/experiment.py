@@ -78,7 +78,7 @@ def log_predictions(
     preds_df = pd.DataFrame(predictions, index=index, columns=['y'])
 
     # Adjust ID column name to fit the format expected in the output.
-    preds_df.index.name = 'Id'
+    preds_df.index.name = 'id'
 
     experiment_name = __format_experiment_name(experiment.get_name())
     filename = f'{experiment_name}-predictions.csv'
