@@ -75,7 +75,6 @@ def log_predictions(
         experiment (Experiment): Comet.ml experiment to log to.
         predictions (Sequence): List-like holding predictions.
         index (Sequence): List-like holding index for predictions.
-        filename (str): CSV file to save predictions to.
     '''
     preds_df = pd.DataFrame(predictions, index=index, columns=['y'])
 
@@ -107,3 +106,23 @@ def log_metrics(experiment: Experiment, metrics: dict) -> None:
     experiment_name = __format_experiment_name(experiment.get_name())
     with open(f'{experiment_name}-metrics.yml', 'w+') as outfile:
         yaml.dump(metrics, outfile)
+
+
+def log_cv_results(
+        experiment: Experiment, cv_results: pd.DataFrame) -> None:
+    '''
+    Log cross validation results to CometML and a local CSV file.
+
+    Args:
+        experiment (Experiment): Comet.ml experiment to log to.
+        cv_results (pd.DataFrame): DataFrame holding cross-validation results.
+    '''
+    experiment_name = __format_experiment_name(experiment.get_name())
+    filename = f'{experiment_name}-predictions.csv'
+
+    # Log predictions as a CSV to CometML, retrievable under the experiment
+    # by going to `Assets > dataframes`.
+    experiment.log_table(filename=filename, tabular_data=cv_results)
+
+    # Log predictions to local file system
+    cv_results.to_csv(filename)
