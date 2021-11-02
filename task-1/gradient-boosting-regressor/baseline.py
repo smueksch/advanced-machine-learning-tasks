@@ -30,7 +30,6 @@ def main():
     # Define experiment parameters for CometML to be logged to the project under
     # the experiment.
     params = {
-        'valid_split': cli_args.valid_split,
         'random_seed': cli_args.seed}
     log_parameters(experiment, params)
 
