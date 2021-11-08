@@ -81,7 +81,7 @@ def main():
 
     # Log transform hand-selected features based on training data.
     X_train[log_transform_features] = np.log(X_train[log_transform_features])
-    X_test[log_transform_features] = np.log(X_test[high_corr_features])
+    X_test[log_transform_features] = np.log(X_test[log_transform_features])
 
     # Define model pipeline.
     model_pipeline = Pipeline(
