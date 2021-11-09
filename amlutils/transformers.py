@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 from sklearn.base import BaseEstimator, TransformerMixin
-from typing import List
+from typing import Any, List
 
 
 class AbsoluteCorrelationSelector(BaseEstimator, TransformerMixin):
@@ -50,6 +50,7 @@ class AbsoluteCorrelationSelector(BaseEstimator, TransformerMixin):
         Return:
             self: Reference to itself so call to transform can be chained.
         '''
+        X = self.__to_dataframe(X)
         if 'pearson' == self.correlation_method or 'spearman' == self.correlation_method:
             self.high_correlation_features = self.__get_features(
                 X,
@@ -91,6 +92,7 @@ class AbsoluteCorrelationSelector(BaseEstimator, TransformerMixin):
             pd.DataFrame: Transformed X where only the columns with high
                 absolute correlation with label y have been preserved.
         '''
+        X = self.__to_dataframe(X)
         return X[self.high_correlation_features]
 
     def __get_features(
@@ -119,8 +121,22 @@ class AbsoluteCorrelationSelector(BaseEstimator, TransformerMixin):
             list of str: Names of columns in X that have absolute correlation 
                 with y strictly greater than threshold.
         '''
+        # If used in an sklearn Pipeline, X will be a NumPy array, so need
+        # to convert to DataFrame.
         y_correlation = X.corrwith(y['y'], method=correlation_method).fillna(0)
         y_abs_correlation = np.abs(y_correlation)
         high_abs_corr_features = y_abs_correlation[y_abs_correlation >
                                                    min_abs_correlation]
         return list(high_abs_corr_features.index.values)
+
+    @staticmethod
+    def __to_dataframe(X: Any) -> pd.DataFrame:
+        '''
+        Convert given argument to DataFrame if necessary.
+        '''
+        if type(X) == np.ndarray:
+            return pd.DataFrame(
+                data=X,
+                columns=[f'x{idx}' for idx in range(X.shape[1])])
+        else:
+            return X
