@@ -95,7 +95,7 @@ def main():
                     # splits, which may be due to aggressive outlier
                     # classification. In that case, report all unknown metrics
                     # as NaN.
-                    cv_results = {
+                    cv_scores = {
                         'train_score': [np.nan for x in range(5)],
                         'test_score': [np.nan for x in range(5)]}
 
