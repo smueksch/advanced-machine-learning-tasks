@@ -117,7 +117,7 @@ def log_cv_results(
         cv_results (pd.DataFrame): DataFrame holding cross-validation results.
     '''
     experiment_name = __format_experiment_name(experiment.get_name())
-    filename = f'{experiment_name}-predictions.csv'
+    filename = f'{experiment_name}-cv-results.csv'
 
     # Log predictions as a CSV to CometML, retrievable under the experiment
     # by going to `Assets > dataframes`.
