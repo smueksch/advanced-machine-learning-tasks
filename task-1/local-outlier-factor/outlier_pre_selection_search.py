@@ -51,8 +51,8 @@ def main():
         'outlier__contamination': ['auto', 0.05, 0.1, 0.2, 0.3, 0.4, 0.5]}
 
     cv_results = pd.DataFrame(
-        columns=['n_features', 'n_neighbors', 'metric', 'contamination',
-                 'train_split_0_score', 'train_split_1_score',
+        columns=['n_samples', 'n_features', 'n_neighbors', 'metric',
+                 'contamination', 'train_split_0_score', 'train_split_1_score',
                  'train_split_2_score', 'train_split_3_score',
                  'train_split_4_score', 'valid_split_0_score',
                  'valid_split_1_score', 'valid_split_2_score',
@@ -81,26 +81,38 @@ def main():
                 scaler = StandardScaler()
                 X_train = scaler.fit_transform(X_train)
 
-                cv_scores = cross_validate(
-                    GradientBoostingRegressor(
-                        learning_rate=0.01,
-                        n_estimators=2600, max_depth=4,
-                        subsample=0.45, random_state=cli_args.seed),
-                    X_train, pd.Series.ravel(y_train), scoring='r2',
-                    cv=5, n_jobs=-1, verbose=1,
-                    return_train_score=True)
+                try:
+                    cv_scores = cross_validate(
+                        GradientBoostingRegressor(
+                            learning_rate=0.01,
+                            n_estimators=2600, max_depth=4,
+                            subsample=0.45, random_state=cli_args.seed),
+                        X_train, pd.Series.ravel(y_train), scoring='r2',
+                        cv=5, n_jobs=-1, verbose=1,
+                        return_train_score=True)
+                except ValueError:
+                    # Occurs if number of samples is fewer than number of
+                    # splits, which may be due to aggressive outlier
+                    # classification. In that case, report all unknown metrics
+                    # as NaN.
+                    cv_results = {
+                        'train_score': [np.nan for x in range(5)],
+                        'test_score': [np.nan for x in range(5)]}
 
                 train_score = float(np.mean(cv_scores['train_score']))
                 valid_score = float(np.mean(cv_scores['test_score']))
 
-                print(f'n_features={X_train.shape[1]},' +
+                print(f'n_samples={X_train.shape[0]},' +
+                      f'n_features={X_train.shape[1]},' +
                       f'n_neighbors={n_neighbors},metric={metric},' +
                       f'contamination={contamination},' +
                       f'train_score={train_score},' +
                       f'valid_score={valid_score}')
 
                 row = pd.Series(
-                    [X_train.shape[1], n_neighbors, metric, contamination] +
+                    [X_train.shape[0],
+                     X_train.shape[1],
+                     n_neighbors, metric, contamination] +
                     list(cv_scores['train_score']) +
                     list(cv_scores['test_score']) +
                     [train_score, valid_score],
