@@ -3,4 +3,4 @@ bsub -W 8:00 \
 -n 16 \
 -R "rusage[mem=512]" \
 -o auto_contamination.log \
-"python auto_contamination.py --name 'LOF (Auto Contamination Search)'"
+"python auto_contamination.py --name 'IsolFor (Auto Contamination Search)'"
