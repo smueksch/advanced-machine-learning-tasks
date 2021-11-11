@@ -129,6 +129,7 @@ def main():
             'loss': -mean_r2_score,
             'status': STATUS_OK
             }
+        print(result)
         return result
 
     trials = Trials()
