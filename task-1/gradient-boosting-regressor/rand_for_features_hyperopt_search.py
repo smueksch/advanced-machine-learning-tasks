@@ -121,7 +121,7 @@ def main():
 
     trials = Trials()
     best_hyperparams = fmin(fn=gbr_neg_valid_score, space=search_space,
-                            algo=tpe.suggest, max_evals=1, trials=trials)
+                            algo=tpe.suggest, max_evals=500, trials=trials)
     print(f'Best hyperparameters: {best_hyperparams}')
 
     # Save cross validation results.
