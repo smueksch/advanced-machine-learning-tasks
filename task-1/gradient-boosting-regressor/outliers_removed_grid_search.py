@@ -127,12 +127,12 @@ def main():
 
     # Run grid search over hyperparameters.
     parameter_grid = {
-        'gbr__learning_rate': [0.001, 0.01, 0.1],
-        'gbr__n_estimators':
+        'learning_rate': [0.001, 0.01, 0.1],
+        'n_estimators':
         [2000, 2100, 2200, 2300, 2400, 2500, 2600, 2700, 2800, 2900, 3000,
          3100, 3200, 3300, 3400, 3500, 3600, 3700, 3800, 3900, 4000],
-        'gbr__max_depth': [2, 3, 4],
-        'gbr__subsample':
+        'max_depth': [2, 3, 4],
+        'subsample':
         [0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7,
          0.75, 0.8, 0.85, 0.9, 0.95, 1.0]}
 
@@ -148,7 +148,7 @@ def main():
         verbose=4,
         return_train_score=True)
 
-    grid_search.fit(X_train, y_train)
+    grid_search.fit(X_train, pd.Series.ravel(y_train))
 
     # Save cross validation results.
     log_cv_results(experiment, pd.DataFrame.from_dict(grid_search.cv_results_))
