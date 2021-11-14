@@ -162,10 +162,10 @@ def main():
     metrics = {
         'valid_r2_score': grid_search.best_score_,
         'best_valid_r2_score': grid_search.best_score_,
-        'best_learning_rate': grid_search.best_params_['gbr__learning_rate'],
-        'best_n_estimators': grid_search.best_params_['gbr__n_estimators'],
-        'best_max_depth': grid_search.best_params_['gbr__max_depth'],
-        'best_subsample': grid_search.best_params_['gbr__subsample'],
+        'best_learning_rate': grid_search.best_params_['learning_rate'],
+        'best_n_estimators': grid_search.best_params_['n_estimators'],
+        'best_max_depth': grid_search.best_params_['max_depth'],
+        'best_subsample': grid_search.best_params_['subsample'],
         'refit_time': grid_search.refit_time_}
     log_metrics(experiment, metrics)
 
