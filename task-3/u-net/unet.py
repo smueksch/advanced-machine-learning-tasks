@@ -46,18 +46,38 @@ def main():
         'epochs': config.epochs}
     log_parameters(experiment, params)
 
-    # Load the data and build a DataLoader.
+    # Load training set.
     train_set = load_zipped_pickle(os.path.join(
         config.data_dir, config.training_set_file))
 
-    X_train = train_set[0]['Image']
-    y_train = train_set[0]['Label']
+    # Select first expert-labelled image.
+    expert_train_set = [sample for sample in train_set
+                        if sample['dataset'] == 'amateur']  # Amateur only for testing.
+    expert_train_sample = expert_train_set[0]
+
+    # Select the first labelled frame for training.
+    labelled_frame = expert_train_sample['frames'][0]
+
+    X_train = expert_train_sample['video'][:, :, labelled_frame]
+    y_train = expert_train_sample['label'][:, :, labelled_frame]
+
+    # Compute pixel-wise weights according to bounding box.
+    bounding_box = torch.tensor(expert_train_sample['box'], dtype=torch.float)
+
+    importance = 100
+    pixel_weights = torch.where(
+        bounding_box == 1,
+        torch.ones(bounding_box.shape) * importance,
+        torch.ones(bounding_box.shape)
+        )
 
     train_loader = build_data_loader(X_train, y_train)
 
     # Train model.
     mv_segmenter = UNet(
-        experiment=experiment, learning_rate=config.learning_rate,
+        experiment=experiment,
+        pixel_weights=pixel_weights,
+        learning_rate=config.learning_rate,
         debug=config.debug)
 
     trainer = pl.Trainer(

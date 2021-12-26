@@ -56,14 +56,16 @@ class UNet(pl.LightningModule):
     https://arxiv.org/pdf/1505.04597.pdf
     '''
 
-    def __init__(
-            self, experiment: Experiment = None, learning_rate=1e-3, n_classes=2,
-            debug=False):
+    def __init__(self, experiment: Experiment = None,
+                 pixel_weights: torch.Tensor = None, learning_rate=1e-3,
+                 n_classes=2, debug=False):
         '''
         Initialize layers.
 
         Args:
             experiment (Experiment): Comet.ml experiment for logging.
+            pixel_weights (torch.Tensor): If supplied, will act as per-pixel
+                weights for the cross-entropy loss, see Eq. (1) in linked paper.
             learning_rate (float): Learning rate for training.
             n_classes (int): Number of classes to map to (default=2).
             debug (bool): Print debug information like layer output shapes.
@@ -72,6 +74,7 @@ class UNet(pl.LightningModule):
         super(UNet, self).__init__()
 
         self.experiment = experiment
+        self.pixel_weights = pixel_weights
         self.learning_rate = learning_rate
         self.debug = debug
 
@@ -297,6 +300,15 @@ class UNet(pl.LightningModule):
             )
         return prediction
 
+    def predict_prob(self, X):
+        '''
+        Output class probabilities.
+        '''
+        y_hat = self.forward(X)
+        prediction = F.softmax(y_hat, dim=1)
+        prediction = torch.squeeze(prediction)
+        return prediction
+
     def configure_optimizers(self):
         optimizer = torch.optim.AdamW(self.parameters(), lr=self.learning_rate)
         return optimizer
@@ -308,8 +320,25 @@ class UNet(pl.LightningModule):
         y_hat = self.forward(X)
         y = F_transforms.center_crop(y, y_hat.shape[2:])
 
-        loss = F.cross_entropy(y_hat, y)
-        self.log('train_loss', loss)
+        if self.pixel_weights is None:
+            # No per-pixel weights supplied, compute unweighted cross-entropy.
+            loss = F.cross_entropy(y_hat, y)
+            self.log('train_loss', loss)
+        else:
+            # Per-pixel weights supplied, compute weighted cross-entropy.
+            y_hat = torch.squeeze(y_hat)
+            log_probs = F.log_softmax(y_hat, dim=0)
+
+            selected_log_probs = torch.where(
+                y == 1,
+                log_probs[1, :, :],
+                log_probs[0, :, :]
+                )
+            pixel_weights = F_transforms.center_crop(
+                self.pixel_weights, y_hat.shape[1:])
+
+            loss = -torch.sum(pixel_weights * selected_log_probs)
+            self.log('train_loss', loss)
 
         return {'loss': loss, 'X': X}
 
@@ -319,10 +348,12 @@ class UNet(pl.LightningModule):
 
             self.experiment.log_epoch_end(self.epoch)
 
-            self.experiment.log_metric('train_loss', last_step_out['loss'])
+            self.experiment.log_metric(
+                'train_loss', last_step_out['loss'],
+                epoch=self.epoch)
 
-            # Log current prediction.
-            threshold = 0.25
+            # Log visualization of current probability density for class 1.
+            threshold = 0.5
             self.freeze()
             prediction = self.predict_by_threshold(
                 last_step_out['X'], threshold=threshold)
@@ -346,7 +377,7 @@ class UNet(pl.LightningModule):
 
             self.experiment.log_image(
                 'prediction.png',
-                name=f'prediction-epoch-{self.epoch}')
+                name=f'prediction-epoch-{self.epoch:03}')
 
         self.epoch += 1
 
