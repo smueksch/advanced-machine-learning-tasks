@@ -2,6 +2,8 @@
 from comet_ml import Experiment
 import os
 import sys
+
+from pytorch_lightning import callbacks
 sys.path.append(os.path.join(os.pardir, os.pardir))
 
 import random
@@ -11,7 +13,6 @@ import numpy as np
 import torch
 
 import pytorch_lightning as pl
-from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 
 
 # Need to add amlutils path so Python can find it.
@@ -27,6 +28,9 @@ def main():
     cli_args = get_cli_arguments()
     config = read_config(cli_args.config)
     experiment = build_experiment_from_config(config)
+
+    # Log configuration file.
+    experiment.log_asset(cli_args.config)
 
     # Set seeds for reproducability.
     random.seed(config.seed)
@@ -52,7 +56,9 @@ def main():
     train_loader = build_data_loader(X_train, y_train)
 
     # Train model.
-    mv_segmenter = UNet(learning_rate=config.learning_rate, debug=config.debug)
+    mv_segmenter = UNet(
+        experiment=experiment, learning_rate=config.learning_rate,
+        debug=config.debug)
 
     trainer = pl.Trainer(
         max_epochs=config.epochs,
@@ -65,7 +71,9 @@ def main():
 
     # Define experiment metrics for CometML to be logged to the project under
     # the experiment.
-    metrics = {}
+    metrics = {
+        'final_train_loss': trainer.logged_metrics['train_loss']
+        }
     log_metrics(experiment, metrics)
 
 

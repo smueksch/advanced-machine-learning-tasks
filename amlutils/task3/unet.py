@@ -1,4 +1,7 @@
+from comet_ml import Experiment
 import math
+
+import matplotlib.pyplot as plt
 
 import torch
 import torch.nn as nn
@@ -6,6 +9,8 @@ import torch.nn.functional as F
 import torchvision.transforms.functional as F_transforms
 
 import pytorch_lightning as pl
+
+from .visualization import visualize_segmentation
 
 
 def crop_and_concat(
@@ -51,19 +56,29 @@ class UNet(pl.LightningModule):
     https://arxiv.org/pdf/1505.04597.pdf
     '''
 
-    def __init__(self, learning_rate=1e-3, n_classes=2, debug=False):
+    def __init__(
+            self, experiment: Experiment = None, learning_rate=1e-3, n_classes=2,
+            debug=False):
         '''
         Initialize layers.
 
         Args:
+            experiment (Experiment): Comet.ml experiment for logging.
+            learning_rate (float): Learning rate for training.
             n_classes (int): Number of classes to map to (default=2).
             debug (bool): Print debug information like layer output shapes.
                 Defaults to False.
         '''
         super(UNet, self).__init__()
 
+        self.experiment = experiment
         self.learning_rate = learning_rate
         self.debug = debug
+
+        # Set up figure for visualization during training.
+        self.fig, self.ax = plt.subplots(1, 1, figsize=(6, 6))
+        self.fig.set_facecolor('white')
+        self.epoch = 0
 
         ## Contracting path. ##
         self.contract_conv1 = nn.Sequential(
@@ -266,6 +281,22 @@ class UNet(pl.LightningModule):
 
         return final_out
 
+    def predict_by_threshold(self, X, threshold: float):
+        '''
+        Output predicted label according to threshold.
+
+        Threshold must be between 0 and 1.
+        '''
+        y_hat = self.forward(X)
+        prediction = F.softmax(y_hat, dim=1)
+        prediction = torch.squeeze(prediction)
+        prediction = torch.where(
+            prediction[1, :, :] > threshold,
+            torch.ones(prediction.shape[1:]),
+            torch.zeros(prediction.shape[1:])
+            )
+        return prediction
+
     def configure_optimizers(self):
         optimizer = torch.optim.AdamW(self.parameters(), lr=self.learning_rate)
         return optimizer
@@ -277,31 +308,47 @@ class UNet(pl.LightningModule):
         y_hat = self.forward(X)
         y = F_transforms.center_crop(y, y_hat.shape[2:])
 
-        '''
-        prediction = F.softmax(y_hat, dim=1)
-        prediction = torch.squeeze(prediction)
-
-        X_crop = F_transforms.center_crop(X, y_hat.shape[2:])
-        X_crop = torch.squeeze(X_crop)
-        X_crop = torch.squeeze(X_crop).numpy()
-
-        visualize_segmentation(
-            X_crop,
-            prediction[0,:,:].detach().numpy(),
-            segmentation_opacity=1
-        )
-
-        visualize_segmentation(
-            X_crop,
-            prediction[1,:,:].detach().numpy(),
-            segmentation_opacity=1
-        )
-        '''
-
         loss = F.cross_entropy(y_hat, y)
-
         self.log('train_loss', loss)
-        return {'loss': loss}
+
+        return {'loss': loss, 'X': X}
+
+    def training_epoch_end(self, training_step_outputs):
+        if self.experiment is not None:
+            last_step_out = training_step_outputs[-1]
+
+            self.experiment.log_epoch_end(self.epoch)
+
+            self.experiment.log_metric('train_loss', last_step_out['loss'])
+
+            # Log current prediction.
+            threshold = 0.25
+            self.freeze()
+            prediction = self.predict_by_threshold(
+                last_step_out['X'], threshold=threshold)
+            self.unfreeze()
+
+            X_crop = F_transforms.center_crop(
+                last_step_out['X'], prediction.shape)
+            X_crop = torch.squeeze(X_crop)
+            X_crop = torch.squeeze(X_crop).numpy()
+
+            self.ax.clear()
+            visualize_segmentation(
+                self.ax,
+                X_crop,
+                prediction.numpy(),
+                )
+            self.ax.set_title(f'Prediction (Threshold {threshold})')
+
+            self.fig.tight_layout()
+            self.fig.savefig('prediction.png')
+
+            self.experiment.log_image(
+                'prediction.png',
+                name=f'prediction-epoch-{self.epoch}')
+
+        self.epoch += 1
 
     # def validation_step(self, batch, batch_nb):
     #    x, y = batch
