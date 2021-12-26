@@ -28,6 +28,7 @@ def get_cli_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description='Process experiment parameters.')
 
+    parser.add_argument('--config', help='name of config JSON file')
     parser.add_argument('--name', help='name for experiment')
     parser.add_argument('--seed', type=int, default=42,
                         help='random seed for experiment')

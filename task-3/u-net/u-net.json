@@ -1,0 +1,15 @@
+{
+    "seed": 42,
+    "debug": false,
+    "disable_comet": true,
+    "experiment_name": "U-Net Segmenter",
+    "experiment_tags": [
+        "task-3",
+        "u-net"
+    ],
+    "data_dir": "../data",
+    "training_set_file": "labeled-images.pkl",
+    "learning_rate": 0.001,
+    "epochs": 10,
+    "model_filename": "mv-segmenter-single-image.ckpt"
+}

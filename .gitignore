@@ -135,3 +135,23 @@ dmypy.json
 *-metrics.yml
 *-parameters.yml
 *-predictions.csv
+
+# Ignore old task files that are not yet commited for cleaner status output
+task-0/
+task-1/
+task-2/
+
+# Ignore data folders
+data/
+
+# Ignore PyTorch Lightning logs
+lightning_logs/
+
+# Ignore saved models due to their size
+*.ckpt
+
+# Ignore script files
+*.scpt
+
+# Ignore files used for local testing
+only-local/

@@ -1,10 +1,12 @@
-from comet_ml import Experiment
+from comet_ml import Experiment, config
 import argparse
 import re
 import yaml
 import pandas as pd
 
 from typing import Any, Sequence
+
+from .task3.config import Config
 
 
 def build_experiment_from_cli(cli_arguments: argparse.Namespace) -> Experiment:
@@ -26,6 +28,31 @@ def build_experiment_from_cli(cli_arguments: argparse.Namespace) -> Experiment:
         disabled=cli_arguments.disable_comet,
         )
     experiment.set_name(cli_arguments.name)
+
+    return experiment
+
+
+def build_experiment_from_config(config: Config) -> Experiment:
+    '''
+    Return Comet.ml Experiment object initialized according to configuration.
+
+    Args:
+        config (Config): Parsed configuration object from JSON.
+
+    Returns:
+        Experiment: Comet.ml Experiment object initilized according to given
+            configuration.
+    '''
+    experiment = Experiment(
+        project_name='aml-tasks',
+        workspace='smueksch',
+        auto_param_logging=True,
+        disabled=config.disable_comet,
+        )
+    experiment.set_name(config.experiment_name)
+
+    for tag in config.experiment_tags:
+        experiment.add_tag(tag)
 
     return experiment
 
