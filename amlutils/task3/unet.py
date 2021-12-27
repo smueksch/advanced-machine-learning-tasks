@@ -337,7 +337,19 @@ class UNet(pl.LightningModule):
             pixel_weights = F_transforms.center_crop(
                 self.pixel_weights, y_hat.shape[1:])
 
-            loss = -torch.sum(pixel_weights * selected_log_probs)
+            weighted_cross_entropy = torch.sum(
+                pixel_weights * selected_log_probs)
+
+            # Compute regularization term as Frobenius norm of actual label
+            # matrix and the class 1 probabilities to encourage network to not
+            # predict too many pixels as class 1 that really aren't.
+            probs = F.softmax(y_hat, dim=0)
+            class_1_probs = probs[1, :, :]
+
+            regularizer = torch.sum((y - class_1_probs) ** 2)
+
+            loss = -(weighted_cross_entropy + regularizer)
+
             self.log('train_loss', loss)
 
         return {'loss': loss, 'X': X}
