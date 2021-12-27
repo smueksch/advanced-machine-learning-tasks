@@ -2,7 +2,7 @@
     "seed": 42,
     "debug": false,
     "disable_comet": false,
-    "experiment_name": "U-Net Regularized Segmenter",
+    "experiment_name": "U-Net Deeper No Crop Segmenter",
     "experiment_tags": [
         "task-3",
         "u-net"
@@ -11,5 +11,5 @@
     "training_set_file": "train.pkl",
     "learning_rate": 0.001,
     "epochs": 100,
-    "model_filename": "mv-segmenter-single-image-weighted-regularized.ckpt"
+    "model_filename": "mv-segmenter-single-image-deeper-no-crop.ckpt"
 }

@@ -20,6 +20,7 @@ def crop_and_concat(
     '''
     conv_out_crop = F_transforms.center_crop(conv_out, upconv_out.shape[2:])
     return torch.concat([conv_out_crop, upconv_out], dim=1)
+    # return torch.concat([conv_out, upconv_out], dim=1)
 
 
 def print_shape(var_name: str, var: torch.Tensor, debug: bool):
@@ -84,8 +85,18 @@ class UNet(pl.LightningModule):
         self.epoch = 0
 
         ## Contracting path. ##
+        self.contract_additional_conv1 = nn.Sequential(
+            nn.Conv2d(1, 32, kernel_size=3, padding='same'),
+            nn.ReLU()
+            )
+        self.contract_additional_conv2 = nn.Sequential(
+            nn.Conv2d(32, 32, kernel_size=3, padding='same'),
+            nn.ReLU()
+            )
+        self.contract_additional_pool1 = nn.MaxPool2d(kernel_size=2, stride=2)
+
         self.contract_conv1 = nn.Sequential(
-            nn.Conv2d(1, 64, kernel_size=3, padding='same'),
+            nn.Conv2d(32, 64, kernel_size=3, padding='same'),
             nn.ReLU()
             )
         self.contract_conv2 = nn.Sequential(
@@ -138,7 +149,7 @@ class UNet(pl.LightningModule):
         ## Expansive path. ##
         self.expand_upconv1 = nn.Sequential(
             nn.Upsample(scale_factor=2),
-            nn.Conv2d(1024, 512, kernel_size=2)
+            nn.Conv2d(1024, 512, kernel_size=2, padding='same')
             )
         self.expand_conv1 = nn.Sequential(
             nn.Conv2d(1024, 512, kernel_size=3, padding='same'),
@@ -151,7 +162,7 @@ class UNet(pl.LightningModule):
 
         self.expand_upconv2 = nn.Sequential(
             nn.Upsample(scale_factor=2),
-            nn.Conv2d(512, 256, kernel_size=2)
+            nn.Conv2d(512, 256, kernel_size=2, padding='same')
             )
         self.expand_conv3 = nn.Sequential(
             nn.Conv2d(512, 256, kernel_size=3, padding='same'),
@@ -164,7 +175,7 @@ class UNet(pl.LightningModule):
 
         self.expand_upconv3 = nn.Sequential(
             nn.Upsample(scale_factor=2),
-            nn.Conv2d(256, 128, kernel_size=2)
+            nn.Conv2d(256, 128, kernel_size=2, padding='same')
             )
         self.expand_conv5 = nn.Sequential(
             nn.Conv2d(256, 128, kernel_size=3, padding='same'),
@@ -177,7 +188,7 @@ class UNet(pl.LightningModule):
 
         self.expand_upconv4 = nn.Sequential(
             nn.Upsample(scale_factor=2),
-            nn.Conv2d(128, 64, kernel_size=2)
+            nn.Conv2d(128, 64, kernel_size=2, padding='same')
             )
         self.expand_conv7 = nn.Sequential(
             nn.Conv2d(128, 64, kernel_size=3, padding='same'),
@@ -188,7 +199,20 @@ class UNet(pl.LightningModule):
             nn.ReLU()
             )
 
-        self.expand_final_conv = nn.Conv2d(64, n_classes, kernel_size=1)
+        self.expand_additional_upconv1 = nn.Sequential(
+            nn.Upsample(scale_factor=2),
+            nn.Conv2d(64, 32, kernel_size=2, padding='same')
+            )
+        self.expand_additional_conv1 = nn.Sequential(
+            nn.Conv2d(64, 32, kernel_size=3, padding='same'),
+            nn.ReLU()
+            )
+        self.expand_additional_conv2 = nn.Sequential(
+            nn.Conv2d(32, 32, kernel_size=3, padding='same'),
+            nn.ReLU()
+            )
+
+        self.expand_final_conv = nn.Conv2d(32, n_classes, kernel_size=1)
 
         self.initialize_parameters()
 
@@ -202,7 +226,19 @@ class UNet(pl.LightningModule):
     def forward(self, X):
         ## Contracting path. ##
         print_shape('X', X, self.debug)
-        contract_conv1_out = self.contract_conv1(X)
+        contract_additional_conv1_out = self.contract_additional_conv1(X)
+        print_shape('contract_additional_conv1_out',
+                    contract_additional_conv1_out, self.debug)
+        contract_additional_conv2_out = self.contract_additional_conv2(
+            contract_additional_conv1_out)
+        print_shape('contract_additional_conv2_out',
+                    contract_additional_conv2_out, self.debug)
+        contract_additional_pool1_out = self.contract_additional_pool1(
+            contract_additional_conv2_out)
+        print_shape('contract_additional_pool1_out',
+                    contract_additional_pool1_out, self.debug)
+
+        contract_conv1_out = self.contract_conv1(contract_additional_pool1_out)
         print_shape('contract_conv1_out', contract_conv1_out, self.debug)
         contract_conv2_out = self.contract_conv2(contract_conv1_out)
         print_shape('contract_conv2_out', contract_conv2_out, self.debug)
@@ -279,7 +315,24 @@ class UNet(pl.LightningModule):
         expand_conv8_out = self.expand_conv8(expand_conv7_out)
         print_shape('expand_conv8_out', expand_conv8_out, self.debug)
 
-        final_out = self.expand_final_conv(expand_conv8_out)
+        expand_additional_upconv1_out = self.expand_additional_upconv1(
+            expand_conv8_out)
+        print_shape('expand_additional_upconv1_out',
+                    expand_additional_upconv1_out, self.debug)
+        expand_additional_conv1_in = crop_and_concat(
+            contract_additional_conv2_out, expand_additional_upconv1_out)
+        print_shape('expand_additional_conv1_in',
+                    expand_additional_conv1_in, self.debug)
+        expand_additional_conv1_out = self.expand_additional_conv1(
+            expand_additional_conv1_in)
+        print_shape('expand_additional_conv1_out',
+                    expand_additional_conv1_out, self.debug)
+        expand_additional_conv2_out = self.expand_additional_conv2(
+            expand_additional_conv1_out)
+        print_shape('expand_additional_conv2_out',
+                    expand_additional_conv2_out, self.debug)
+
+        final_out = self.expand_final_conv(expand_additional_conv2_out)
         print_shape('final_out', final_out, self.debug)
 
         return final_out

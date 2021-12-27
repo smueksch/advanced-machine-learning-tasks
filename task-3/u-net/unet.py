@@ -11,6 +11,7 @@ import random
 import numpy as np
 
 import torch
+import torchvision.transforms.functional as F_transforms
 
 import pytorch_lightning as pl
 
@@ -70,6 +71,12 @@ def main():
         torch.ones(bounding_box.shape) * importance,
         torch.ones(bounding_box.shape)
         )
+
+    # Pad everything so that it is divisible by 2 enough times. Hardcoded for
+    # now.
+    X_train = np.pad(X_train, [(8, 8), (8, 8)])
+    y_train = np.pad(y_train, [(8, 8), (8, 8)])
+    pixel_weights = F_transforms.pad(pixel_weights, [8, 8, 8, 8], fill=1)
 
     train_loader = build_data_loader(X_train, y_train)
 
