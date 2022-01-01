@@ -58,15 +58,16 @@ class UNet(pl.LightningModule):
     '''
 
     def __init__(self, experiment: Experiment = None,
-                 pixel_weights: torch.Tensor = None, learning_rate=1e-3,
+                 bounding_box_importance=1.0, learning_rate=1e-3,
                  n_classes=2, debug=False):
         '''
         Initialize layers.
 
         Args:
             experiment (Experiment): Comet.ml experiment for logging.
-            pixel_weights (torch.Tensor): If supplied, will act as per-pixel
-                weights for the cross-entropy loss, see Eq. (1) in linked paper.
+            bounding_box_importance (float): Acts as a multiplier for per-pixel
+                weights for the cross-entropy loss for the area given by the
+                bounding box, see Eq. (1) in linked paper.
             learning_rate (float): Learning rate for training.
             n_classes (int): Number of classes to map to (default=2).
             debug (bool): Print debug information like layer output shapes.
@@ -75,14 +76,14 @@ class UNet(pl.LightningModule):
         super(UNet, self).__init__()
 
         self.experiment = experiment
-        self.pixel_weights = pixel_weights
+        self.bounding_box_importance = bounding_box_importance
         self.learning_rate = learning_rate
         self.debug = debug
 
         # Set up figure for visualization during training.
         self.fig, self.ax = plt.subplots(1, 1, figsize=(6, 6))
         self.fig.set_facecolor('white')
-        self.epoch = 0
+        self.step = 0
 
         ## Contracting path. ##
         self.contract_additional_conv1 = nn.Sequential(
@@ -367,84 +368,79 @@ class UNet(pl.LightningModule):
         return optimizer
 
     def training_step(self, batch, batch_nb):
-        X, y = batch
-        X = torch.unsqueeze(X, 1)
+        X = batch['frame'].float().to(self.device)
+        y = batch['label'].to(self.device)
+        pixel_weights = self.bounding_box_importance * \
+            batch['box'].to(self.device)
 
         y_hat = self.forward(X)
-        y = F_transforms.center_crop(y, y_hat.shape[2:])
+        #y = F_transforms.center_crop(y, y_hat.shape[2:])
 
-        if self.pixel_weights is None:
-            # No per-pixel weights supplied, compute unweighted cross-entropy.
-            loss = F.cross_entropy(y_hat, y)
-            self.log('train_loss', loss)
-        else:
-            # Per-pixel weights supplied, compute weighted cross-entropy.
-            y_hat = torch.squeeze(y_hat)
-            log_probs = F.log_softmax(y_hat, dim=0)
+        # Per-pixel weights supplied, compute weighted cross-entropy.
+        y_hat = torch.squeeze(y_hat)
+        log_probs = F.log_softmax(y_hat, dim=0)
 
-            selected_log_probs = torch.where(
-                y == 1,
-                log_probs[1, :, :],
-                log_probs[0, :, :]
-                )
-            pixel_weights = F_transforms.center_crop(
-                self.pixel_weights, y_hat.shape[1:])
+        selected_log_probs = torch.where(
+            y == 1,
+            log_probs[1, :, :],
+            log_probs[0, :, :]
+            )
+        # pixel_weights = F_transforms.center_crop(
+        #    self.pixel_weights, y_hat.shape[1:])
 
-            weighted_cross_entropy = torch.sum(
-                pixel_weights * selected_log_probs)
+        weighted_cross_entropy = torch.sum(
+            pixel_weights * selected_log_probs)
 
-            # Compute regularization term as Frobenius norm of actual label
-            # matrix and the class 1 probabilities to encourage network to not
-            # predict too many pixels as class 1 that really aren't.
-            probs = F.softmax(y_hat, dim=0)
-            class_1_probs = probs[1, :, :]
+        # Compute regularization term as Frobenius norm of actual label
+        # matrix and the class 1 probabilities to encourage network to not
+        # predict too many pixels as class 1 that really aren't.
+        probs = F.softmax(y_hat, dim=0)
+        class_1_probs = probs[1, :, :]
 
-            regularizer = torch.sum((y - class_1_probs) ** 2)
+        regularizer = torch.sum((y - class_1_probs) ** 2)
 
-            loss = -(weighted_cross_entropy + regularizer)
+        loss = -(weighted_cross_entropy + regularizer)
 
-            self.log('train_loss', loss)
+        self.log('train_loss', loss)
 
         return {'loss': loss, 'X': X}
 
-    def training_epoch_end(self, training_step_outputs):
+    def training_step_end(self, training_step_outputs):
         if self.experiment is not None:
-            last_step_out = training_step_outputs[-1]
-
-            self.experiment.log_epoch_end(self.epoch)
-
             self.experiment.log_metric(
-                'train_loss', last_step_out['loss'],
-                epoch=self.epoch)
+                'train_loss', training_step_outputs['loss'], step=self.step)
 
-            # Log visualization of current probability density for class 1.
-            threshold = 0.5
-            self.freeze()
-            prediction = self.predict_by_threshold(
-                last_step_out['X'], threshold=threshold)
-            self.unfreeze()
+            if self.step % 10 == 0:
+                CPU = torch.device('cpu')
+                # Log visualization of current probability density for class 1.
+                threshold = 0.5
+                self.freeze()
+                prediction = self.predict_by_threshold(
+                    training_step_outputs['X'], threshold=threshold).to(CPU)
+                self.unfreeze()
 
-            X_crop = F_transforms.center_crop(
-                last_step_out['X'], prediction.shape)
-            X_crop = torch.squeeze(X_crop)
-            X_crop = torch.squeeze(X_crop).numpy()
+                X_crop = training_step_outputs['X'].to(CPU)
+                # X_crop = F_transforms.center_crop(
+                #    last_step_out['X'], prediction.shape)
+                X_crop = torch.squeeze(X_crop)
+                X_crop = torch.squeeze(X_crop).numpy()
 
-            self.ax.clear()
-            visualize_segmentation(
-                self.ax,
-                X_crop,
-                prediction.numpy(),
-                )
-            self.ax.set_title(f'Prediction (Threshold {threshold})')
+                self.ax.clear()
+                visualize_segmentation(
+                    self.ax,
+                    X_crop,
+                    prediction.numpy(),
+                    )
+                self.ax.set_title(f'Prediction (Threshold {threshold})')
 
-            self.fig.tight_layout()
-            self.fig.savefig('prediction.png')
+                self.fig.tight_layout()
+                self.fig.savefig('prediction.png')
 
-            self.experiment.log_image(
-                'prediction.png',
-                name=f'prediction-epoch-{self.epoch:03}')
+                self.experiment.log_image(
+                    'prediction.png',
+                    name=f'prediction-step-{self.step:05}')
 
-        self.epoch += 1
+        self.step += 1
 
     # def validation_step(self, batch, batch_nb):
     #    x, y = batch

@@ -16,7 +16,11 @@ class Config:
 
     learning_rate: float
     epochs: int
+    batch_size: int
 
+    bounding_box_importance: float
+
+    model_checkpoint_dir: str
     model_filename: str
 
 

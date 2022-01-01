@@ -15,13 +15,14 @@ import torchvision.transforms.functional as F_transforms
 
 import pytorch_lightning as pl
 
-
 # Need to add amlutils path so Python can find it.
 
 from amlutils.cliargs import get_cli_arguments
 from amlutils.experiment import build_experiment_from_config
 from amlutils.experiment import log_parameters, log_metrics
-from amlutils.task3 import read_config, UNet, load_zipped_pickle, build_data_loader
+from amlutils.task3 import read_config, UNet, load_zipped_pickle, build_augmented_dataset_loader
+
+DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
 def main():
@@ -44,50 +45,29 @@ def main():
     params = {
         'random_seed': config.seed,
         'learning_rate': config.learning_rate,
-        'epochs': config.epochs}
+        'epochs': config.epochs,
+        'batch_size': config.batch_size}
     log_parameters(experiment, params)
 
     # Load training set.
     train_set = load_zipped_pickle(os.path.join(
         config.data_dir, config.training_set_file))
 
-    # Select first expert-labelled image.
-    expert_train_set = [sample for sample in train_set
-                        if sample['dataset'] == 'amateur']  # Amateur only for testing.
-    expert_train_sample = expert_train_set[0]
+    train_loader = build_augmented_dataset_loader(train_set, config.batch_size)
 
-    # Select the first labelled frame for training.
-    labelled_frame = expert_train_sample['frames'][0]
-
-    X_train = expert_train_sample['video'][:, :, labelled_frame]
-    y_train = expert_train_sample['label'][:, :, labelled_frame]
-
-    # Compute pixel-wise weights according to bounding box.
-    bounding_box = torch.tensor(expert_train_sample['box'], dtype=torch.float)
-
-    importance = 100
-    pixel_weights = torch.where(
-        bounding_box == 1,
-        torch.ones(bounding_box.shape) * importance,
-        torch.ones(bounding_box.shape)
-        )
-
-    # Pad everything so that it is divisible by 2 enough times. Hardcoded for
-    # now.
-    X_train = np.pad(X_train, [(8, 8), (8, 8)])
-    y_train = np.pad(y_train, [(8, 8), (8, 8)])
-    pixel_weights = F_transforms.pad(pixel_weights, [8, 8, 8, 8], fill=1)
-
-    train_loader = build_data_loader(X_train, y_train)
+    # TODO:
+    # 4) Set up script to run this training
 
     # Train model.
     mv_segmenter = UNet(
         experiment=experiment,
-        pixel_weights=pixel_weights,
+        bounding_box_importance=config.bounding_box_importance,
         learning_rate=config.learning_rate,
         debug=config.debug)
+    mv_segmenter.to(DEVICE)
 
     trainer = pl.Trainer(
+        default_root_dir=config.model_checkpoint_dir,
         max_epochs=config.epochs,
         deterministic=True
         )

@@ -1,8 +1,14 @@
 import pickle
 import gzip
 
+import numpy as np
+
 import torch
 from torch.utils.data import TensorDataset, DataLoader
+
+from typing import Dict
+
+from .data_augmentation import generate_augmented_data, pad_to_multiple
 
 
 def load_zipped_pickle(filename):
@@ -30,3 +36,20 @@ def build_data_loader(X, y):
 
     train_tensor = TensorDataset(X_tensor, y_tensor)
     return DataLoader(dataset=train_tensor, batch_size=1, shuffle=True)
+
+
+class AugmentedDataset(torch.utils.data.Dataset):
+    def __init__(self, data: list[dict]):
+        """Data must have keys 'frame', 'label' and 'box'."""
+        self.data = data
+
+    def __len__(self) -> int:
+        return len(self.data)
+
+    def __getitem__(self, index: int) -> Dict[str, torch.tensor]:
+        return self.data[index]
+
+
+def build_augmented_dataset_loader(data, batch_size):
+    dataset = AugmentedDataset(data)
+    return DataLoader(dataset=dataset, batch_size=batch_size, shuffle=True)

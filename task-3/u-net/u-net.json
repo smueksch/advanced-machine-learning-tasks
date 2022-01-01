@@ -2,14 +2,17 @@
     "seed": 42,
     "debug": false,
     "disable_comet": false,
-    "experiment_name": "U-Net Deeper No Crop Segmenter",
+    "experiment_name": "U-Net Full Segmenter",
     "experiment_tags": [
         "task-3",
         "u-net"
     ],
     "data_dir": "../data",
-    "training_set_file": "train.pkl",
+    "training_set_file": "augmented-expert-train.pkl",
     "learning_rate": 0.001,
-    "epochs": 100,
-    "model_filename": "mv-segmenter-single-image-deeper-no-crop.ckpt"
+    "epochs": 5,
+    "batch_size": 1,
+    "bounding_box_importance": 100.0,
+    "model_checkpoint_dir": "mv-segmenter-checkpoints",
+    "model_filename": "mv-segmenter-full.ckpt"
 }
