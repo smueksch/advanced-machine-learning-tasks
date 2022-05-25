@@ -1,3 +1,5 @@
+> This project was part of the [Advanced Machine Learning](https://ml2.inf.ethz.ch/courses/aml/) course in Fall 2021 at ETH Zürich.
+
 # Setup
 
 The following environment variable needs to be set in order to run any scripts
